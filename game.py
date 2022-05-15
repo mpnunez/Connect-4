@@ -48,32 +48,41 @@ class Game:
         self.board[row_num,col_num] = color
         return row_num
         
+    def count_connections_in_dir(self,new_row,new_col,color,dir_row,dir_col):
+        n_seq = 0
+        for i in range(1,self.n_in_a_row):
+            r = new_row + i * dir_row
+            c = new_col + i * dir_col
+            if r < 0 or r >= self.n_rows or c < 0 or c >= self.n_cols:
+                break
+            
+            if self.board[r,c] == color:
+                n_seq += 1
+            else:
+                break
+            
+        return n_seq
+            
+    
     def check_connections(self,new_row,new_col,color):
         """
         
         """
         
-        # 
-        n_left = 0
+        victory_directions = (
+            ((-1,0), (1,0)),
+            ((0,1), (1,0)),
+            ((-1,-1), (1,1)),
+            ((-1,1),(1,-1))
+            )
         
+        for vd in victory_directions:
+            if sum(
+                self.count_connections_in_dir(new_row,new_col,color,*d) for d in vd
+                ) >= self.n_in_a_row:
+                return True
+            
         
-        n_right = 0
-        if n_left + 1 + n_right >= self.n_in_a_row:
-            return True
-        
-        # No point in checking up
-        n_down = 0
-        
-        if n_down >= self.n_in_a_row:
-            return True
-        
-        # / diagonal
-        n_slash = 0
-        
-        # \ diagonal
-        n_backslash = 0
-        
-        #self.n_in_a_row
         return False
         
     def play(self):

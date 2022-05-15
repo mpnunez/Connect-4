@@ -10,15 +10,15 @@ See https://ringsdb.com/api/doc
 
 
 import numpy as np
-#import Enum
+from enum import Enum
 import random
 
-class Color:
+class Color(Enum):
     EMPTY = 0
     RED = 1
     BLUE = -1
 
-class Result:
+class Result(Enum):
     RED = 1
     BLUE = 2
     DRAW = 3
@@ -40,7 +40,7 @@ class Game:
         
         self.turn = Color.RED
         self.board = np.full((self.n_rows,self.n_cols),Color.EMPTY)
-        self.players = (Player(Color.RED),Player(Color.BLUE))
+        self.players = (Player(Color.RED),HumanPlayer(Color.BLUE))
         self.status = Result.INPROGRESS
         
     def drop_checker(self,col_num,color):
@@ -118,6 +118,12 @@ class Player:
         return random.choice(game.get_available_moves())
     
 
+class HumanPlayer(Player):
+    def make_move(self,game):
+        print(game.board)
+        print(game.get_available_moves())
+        return int(input("Choose column: "))
+
 def main():
 
     results = {
@@ -126,11 +132,14 @@ def main():
         Result.DRAW : 0
     }
 
-    n_games = 100
+    n_games = 1
     for i in range(n_games):
         g = Game()
         g.play()
         results[g.status] += 1
+        
+        #print(g.board)
+        #print(g.status)
         
     print(results)
     

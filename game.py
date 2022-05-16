@@ -10,15 +10,18 @@ See https://ringsdb.com/api/doc
 
 
 import numpy as np
-from enum import Enum
+from enum import IntEnum
 import random
+import h5py
+from abc import ABC, abstractmethod
+from copy import copy
 
-class Color(Enum):
+class Color(IntEnum):
     EMPTY = 0
     RED = 1
     BLUE = -1
 
-class Result(Enum):
+class Result(IntEnum):
     RED = 1
     BLUE = 2
     DRAW = 3
@@ -38,9 +41,13 @@ class Game:
         self.n_cols = 7
         self.n_in_a_row = 4
         
-        self.turn = Color.RED
+        # Record states
+        self.record = True
+        self.state_history = []
+        self.move_history = []
+        
+        # Game variables
         self.board = np.full((self.n_rows,self.n_cols),Color.EMPTY)
-        self.players = (Player(Color.RED),HumanPlayer(Color.BLUE))
         self.status = Result.INPROGRESS
         
     def drop_checker(self,col_num,color):
@@ -71,7 +78,7 @@ class Game:
         
         victory_directions = (
             ((-1,0), (1,0)),
-            ((0,1), (1,0)),
+            ((0,1), (0,-1)),
             ((-1,-1), (1,1)),
             ((-1,1),(1,-1))
             )
@@ -89,9 +96,14 @@ class Game:
         while self.status == Result.INPROGRESS:
             for p in self.players:
                 
+                if self.record:
+                    self.state_history.append(copy(self.board))
+                
+                
                 # Player makes the next move
                 next_move = p.make_move(self)
-                #print("Play {} at column {}".format(p.color,next_move))
+                if self.record:
+                    self.move_history.append(next_move)
                 next_row = self.drop_checker(next_move,p.color)
                 
                 # Check for a win
@@ -110,12 +122,13 @@ class Game:
     def get_available_moves(self):
         return [j for j in range(self.n_cols) if self.board[0,j] == Color.EMPTY]
         
-class Player:
+class Player(ABC):
     def __init__(self,color):
         self.color=color
         
+    @abstractmethod
     def make_move(self,game):
-        return random.choice(game.get_available_moves())
+        pass
     
 
 class HumanPlayer(Player):
@@ -123,6 +136,14 @@ class HumanPlayer(Player):
         print(game.board)
         print(game.get_available_moves())
         return int(input("Choose column: "))
+
+class RandomAI(Player):
+    def make_move(self,game):
+        return random.choice(game.get_available_moves())
+    
+class AIPlayer(Player):
+    def make_move(self,game):
+        return game.get_available_moves()[0]
 
 def main():
 
@@ -132,14 +153,24 @@ def main():
         Result.DRAW : 0
     }
 
-    n_games = 1
-    for i in range(n_games):
-        g = Game()
-        g.play()
-        results[g.status] += 1
-        
-        #print(g.board)
-        #print(g.status)
+    n_games = 10000
+    with h5py.File("connect4games.hdf5", "w") as f:
+        for i in range(n_games):
+            print(i)
+            
+            # Create and play game
+            g = Game()
+            g.players = (RandomAI(Color.RED),RandomAI(Color.BLUE))
+            g.play()
+            
+            # Record aggregate result
+            results[g.status] += 1
+            
+            # Record result in HDF5 file
+            game_group = f.create_group("game_{}".format(i))
+            game_group.attrs["result"] = g.status
+            f.create_dataset("game_{}/board".format(i), data=np.array(g.state_history))
+            f.create_dataset("game_{}/move".format(i), data=np.array(g.move_history))
         
     print(results)
     

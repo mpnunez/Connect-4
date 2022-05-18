@@ -22,9 +22,9 @@ class Color(IntEnum):
     BLUE = -1
 
 class Result(IntEnum):
+    DRAW = 0
     RED = 1
-    BLUE = 2
-    DRAW = 3
+    BLUE = -1
     INPROGRESS = 4
 
 color_to_result = {
@@ -153,8 +153,20 @@ def main():
         Result.DRAW : 0
     }
 
-    n_games = 10000
+    n_games = 10_000
     with h5py.File("connect4games.hdf5", "w") as f:
+        board_ds = f.create_dataset("board", (100, 6, 7), maxshape=(None, 6, 7))
+        ds_dt = np.dtype({"names":["moves_before_finish",
+                           "game_result",
+                           "whose_turn"],
+                  "formats":[(int)]*3
+                  })
+        dummy_data = np.rec.fromarrays([
+            np.zeros(100),np.zeros(100),np.zeros(100)], dtype=ds_dt
+            )
+        moves_ds = f.create_dataset("move", data=dummy_data, maxshape=(None,))
+        
+        first_row_ind = 0
         for i in range(n_games):
             print(i)
             
@@ -166,11 +178,22 @@ def main():
             # Record aggregate result
             results[g.status] += 1
             
-            # Record result in HDF5 file
-            game_group = f.create_group("game_{}".format(i))
-            game_group.attrs["result"] = g.status
-            f.create_dataset("game_{}/board".format(i), data=np.array(g.state_history))
-            f.create_dataset("game_{}/move".format(i), data=np.array(g.move_history))
+            n_moves = len(g.move_history)
+            last_row_ind_plus_one = first_row_ind + n_moves
+            
+            
+            
+            # Record result in HDF5
+            if last_row_ind_plus_one > len(board_ds):
+                board_ds.resize(last_row_ind_plus_one,axis=0)
+                moves_ds.resize(last_row_ind_plus_one,axis=0)
+            board_ds[first_row_ind:last_row_ind_plus_one,:,:] = g.state_history
+            
+            moves_ds["moves_before_finish",first_row_ind:last_row_ind_plus_one] = np.array(list(reversed(range((n_moves)))))
+            moves_ds["game_result",first_row_ind:last_row_ind_plus_one] = np.full((n_moves,),g.status)
+            moves_ds["whose_turn",first_row_ind:last_row_ind_plus_one] = np.array([(1,-1)[i%2] for i in range(n_moves)])
+            
+            first_row_ind += n_moves
         
     print(results)
     

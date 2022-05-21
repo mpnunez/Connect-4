@@ -5,6 +5,13 @@ Spyder Editor
 This is a temporary script file.
 
 See https://ringsdb.com/api/doc
+
+Environment needs:
+h5py
+tensorflow
+keras
+matplotlib
+seaborn
 """
 
 
@@ -15,6 +22,7 @@ import random
 import h5py
 from abc import ABC, abstractmethod
 from copy import copy
+from tqdm import tqdm
 
 class Color(IntEnum):
     EMPTY = 0
@@ -154,7 +162,7 @@ def main():
     }
 
     n_games = 10_000
-    with h5py.File("connect4games.hdf5", "w") as f:
+    with h5py.File("connect4games2.hdf5", "w") as f:
         board_ds = f.create_dataset("board", (100, 6, 7), maxshape=(None, 6, 7))
         ds_dt = np.dtype({"names":["moves_before_finish",
                            "game_result",
@@ -167,8 +175,7 @@ def main():
         moves_ds = f.create_dataset("move", data=dummy_data, maxshape=(None,))
         
         first_row_ind = 0
-        for i in range(n_games):
-            print(i)
+        for i in tqdm(range(n_games)):
             
             # Create and play game
             g = Game()

@@ -164,13 +164,17 @@ def main():
     n_games = 10_000
     with h5py.File("connect4games2.hdf5", "w") as f:
         board_ds = f.create_dataset("board", (100, 6, 7), maxshape=(None, 6, 7))
-        ds_dt = np.dtype({"names":["moves_before_finish",
-                           "game_result",
-                           "whose_turn"],
-                  "formats":[(int)]*3
+        
+        column_names = ["moves_before_finish",
+         "game_id",
+        "game_result",
+        "whose_turn",
+        "move_chosen"]
+        ds_dt = np.dtype({"names": column_names,
+                  "formats":[(int)]*len(column_names)
                   })
         dummy_data = np.rec.fromarrays([
-            np.zeros(100),np.zeros(100),np.zeros(100)], dtype=ds_dt
+            np.zeros(100) for _i in column_names], dtype=ds_dt
             )
         moves_ds = f.create_dataset("move", data=dummy_data, maxshape=(None,))
         
@@ -197,8 +201,10 @@ def main():
             board_ds[first_row_ind:last_row_ind_plus_one,:,:] = g.state_history
             
             moves_ds["moves_before_finish",first_row_ind:last_row_ind_plus_one] = np.array(list(reversed(range((n_moves)))))
+            moves_ds["game_id",first_row_ind:last_row_ind_plus_one] = np.full((n_moves,),i)
             moves_ds["game_result",first_row_ind:last_row_ind_plus_one] = np.full((n_moves,),g.status)
             moves_ds["whose_turn",first_row_ind:last_row_ind_plus_one] = np.array([(1,-1)[i%2] for i in range(n_moves)])
+            moves_ds["move_chosen",first_row_ind:last_row_ind_plus_one] = g.move_history
             
             first_row_ind += n_moves
         
